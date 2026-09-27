@@ -1,4 +1,4 @@
-# EZhouArch RISC-V-CPU-Simulator
+# FORWARD RISC-V Microarchitecture
 This is a C++ based multicore RISC-V CPU simulation
 
 1st stage implementation: basic structure 
@@ -17,12 +17,12 @@ This is a C++ based multicore RISC-V CPU simulation
 1.forwarding Unit  
 2.Stall Unit  
 
-5st stage implementation: Cache simulation **->current stage**  
+5st stage implementation: Cache simulation
 1.direct mapped 
 2.set associative  
 3.cache statistics
 
-6st stage implementation: Branch Prediction  
+6st stage implementation: Branch Prediction  **->current stage**  
 1.2-bit saturating counter  
 
 7st stage: benchmark:  

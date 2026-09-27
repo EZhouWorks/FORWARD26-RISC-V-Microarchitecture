@@ -22,6 +22,7 @@
 #include "BranchUnit.h"
 #include "JumpUnit.h"
 #include "BranchPredictor.h"
+#include "Probe.h"
 
 class CPUcore {
 public:
@@ -40,11 +41,12 @@ public:
     BranchUnit branch_unit = BranchUnit();
     JumpUnit jump_unit = JumpUnit();
     BranchPredictor branch_predictor = BranchPredictor(0);
+    Probe& probes;
 
-
-    CPUcore(int core_id,int end_point)
+    CPUcore(int core_id,int end_point, Probe& probes)
         :core_id(core_id),
-         program_counter(0,end_point)
+        program_counter(0,end_point),
+        probes(probes)
     {
         this->enable_signal.FetchEnable = 1;
         this->enable_signal.DecodeEnable = 1;
@@ -53,14 +55,14 @@ public:
         this->enable_signal.WriteBackEnable = 1;
     }
 
-    uint8_t CPULoadByte(uint32_t addr,L2Cache& l2cache,RAM& ram) {
-        return l1_cache.readByte(addr,l2cache,ram);
+    uint8_t CPULoadByte(uint32_t addr,L2Cache& l2cache,RAM& ram,int& cache_hit_count) {
+        return l1_cache.readByte(addr,l2cache,ram,cache_hit_count,1);
     }
-    uint16_t CPULoadHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram) {
-        return l1_cache.readHalfWord(addr,l2cache,ram);
+    uint16_t CPULoadHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram,int& cache_hit_count) {
+        return l1_cache.readHalfWord(addr,l2cache,ram,cache_hit_count,1);
     }
-    uint32_t CPULoadWord(uint32_t addr,L2Cache& l2cache,RAM& ram) {
-        return l1_cache.readWord(addr,l2cache,ram);
+    uint32_t CPULoadWord(uint32_t addr,L2Cache& l2cache,RAM& ram,int& cache_hit_count) {
+        return l1_cache.readWord(addr,l2cache,ram,cache_hit_count,1);
     }
 
     void Fetch(L2Cache& l2cache,RAM& ram) {
@@ -80,7 +82,7 @@ public:
                 cout<<"hit cond"<<endl;
 
                 //Normal
-                pipeline_registers_write.IF_ID_register.machine_code = CPULoadWord(program_counter.PC_value,l2cache,ram);
+                pipeline_registers_write.IF_ID_register.machine_code = CPULoadWord(program_counter.PC_value,l2cache,ram,probes.cache_hit_count);
                 pipeline_registers_write.IF_ID_register.command_PC_value = program_counter.PC_value;
                 pipeline_registers_write.IF_ID_register.valid = 1;
                 cout<<"MACHINE CODE AT FETCH "<<bitset<32>(pipeline_registers_write.IF_ID_register.machine_code)<<endl;
@@ -143,7 +145,7 @@ public:
                         pipeline_registers_write.ID_EX_register.ALU_operation = NO_ALU_OP; //create bubble, NOP will be passed down for every stall cycle
                         pipeline_registers_write.ID_EX_register.Memory_op = NO_MEMORY_OP;
                         pipeline_registers_write.ID_EX_register.Store_op = NO_STORE_OP;
-                        stall_unit.SetStall(program_counter,decoder,pipeline_registers_write.IF_ID_register);
+                        stall_unit.SetStall(program_counter,decoder,pipeline_registers_write.IF_ID_register,probes.stall_count);
                         pipeline_registers_write.ID_EX_register.valid = 0;
                         return;
                     }
@@ -157,7 +159,7 @@ public:
                         pipeline_registers_write.ID_EX_register.ALU_operation = NO_ALU_OP;
                         pipeline_registers_write.ID_EX_register.Memory_op = NO_MEMORY_OP;
                         pipeline_registers_write.ID_EX_register.Store_op = NO_STORE_OP;
-                        stall_unit.SetStall(program_counter, decoder,pipeline_registers_write.IF_ID_register);
+                        stall_unit.SetStall(program_counter, decoder,pipeline_registers_write.IF_ID_register,probes.stall_count);
                         pipeline_registers_write.ID_EX_register.valid = 0;
                         return;
                     }
@@ -175,7 +177,7 @@ public:
                         pipeline_registers_write.ID_EX_register.ALU_operation = NO_ALU_OP;
                         pipeline_registers_write.ID_EX_register.Memory_op = NO_MEMORY_OP;
                         pipeline_registers_write.ID_EX_register.Store_op = NO_STORE_OP;
-                        stall_unit.SetStall(program_counter, decoder,pipeline_registers_write.IF_ID_register);
+                        stall_unit.SetStall(program_counter, decoder,pipeline_registers_write.IF_ID_register,probes.stall_count);
                         pipeline_registers_write.ID_EX_register.valid = 0;
                         return;
                     }
@@ -351,7 +353,7 @@ public:
                 if (stall_unit.CheckLoadStoreStall(pipeline_registers_read.EX_MEM_register.ALU_result, ALU_result)) {
                     pipeline_registers_write.IF_ID_register.valid = 0;
                     pipeline_registers_write.ID_EX_register.valid = 0;
-                    stall_unit.SetStoreLoadStall(program_counter, decoder,pipeline_registers_write.IF_ID_register,pipeline_registers_write.ID_EX_register);
+                    stall_unit.SetStoreLoadStall(program_counter, decoder,pipeline_registers_write.IF_ID_register,pipeline_registers_write.ID_EX_register,probes.stall_count);
                 }
             }
 
@@ -382,7 +384,7 @@ public:
             Memory_op memory_op = pipeline_registers_read.EX_MEM_register.Memory_op;
             Memory_data_type memory_data_type = pipeline_registers_read.EX_MEM_register.Memory_data_type;
             uint32_t ALU_result = pipeline_registers_read.EX_MEM_register.ALU_result;
-            pipeline_registers_write.MEM_WB_register.data = l1_cache.Load(memory_op, memory_data_type,ALU_result,l2cache, ram); //Remember to connect this to I/O
+            pipeline_registers_write.MEM_WB_register.data = l1_cache.Load(memory_op, memory_data_type,ALU_result,l2cache, ram, probes.total_mem_read,probes.cache_hit_count); //Remember to connect this to I/O
 
             //pass on data from EX/MEM Register
             pipeline_registers_write.MEM_WB_register.ALU_result = pipeline_registers_read.EX_MEM_register.ALU_result;
@@ -410,7 +412,7 @@ public:
             uint32_t rd_addr = pipeline_registers_read.MEM_WB_register.rd_addr;
             uint32_t data = pipeline_registers_read.MEM_WB_register.data;
             RegFile_op RegFile_op = pipeline_registers_read.MEM_WB_register.RegFile_op;
-            uint32_t command_PC_value = pipeline_registers_write.MEM_WB_register.command_PC_value;
+            uint32_t command_PC_value = pipeline_registers_read.MEM_WB_register.command_PC_value;
             uint32_t rs2_val = pipeline_registers_read.MEM_WB_register.rs2_val;
 
             cout<<"RS2 val "<<rs2_val<<endl;
@@ -443,7 +445,7 @@ public:
         }
 
         //codes below are for debug purposes only
-        cout<<"RAM at 104 "<<l1_cache.readWord(104,l2cache,ram)<<endl;
+        //cout<<"RAM at 104 "<<l1_cache.readWord(104,l2cache,ram)<<endl;
     }
 };
 

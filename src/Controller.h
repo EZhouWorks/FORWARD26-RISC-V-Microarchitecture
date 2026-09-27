@@ -60,11 +60,11 @@ public:
             case(18): this->ALU_operation = OR_op; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_op = NO_MEMORY_OP; Store_op = NO_STORE_OP; RegFile_op = SAVE_ALU_RESULT; break;
             case(19): this->ALU_operation = AND_op; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_op = NO_MEMORY_OP; Store_op = NO_STORE_OP; RegFile_op = SAVE_ALU_RESULT; break;
             //Load
-            case(20): this->ALU_operation = ADD_op; Memory_op = READBYTE; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = UNSIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
-            case(21): this->ALU_operation = ADD_op; Memory_op = READHALF; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = UNSIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
+            case(20): this->ALU_operation = ADD_op; Memory_op = READBYTE; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = SIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
+            case(21): this->ALU_operation = ADD_op; Memory_op = READHALF; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = SIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
             case(22): this->ALU_operation = ADD_op; Memory_op = READWORD; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = UNSIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
-            case(23): this->ALU_operation = ADD_op; Memory_op = READBYTE; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = SIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
-            case(24): this->ALU_operation = ADD_op; Memory_op = READHALF; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = SIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
+            case(23): this->ALU_operation = ADD_op; Memory_op = READBYTE; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = UNSIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
+            case(24): this->ALU_operation = ADD_op; Memory_op = READHALF; ALU_source1 = rs1; ALU_source2 = I_12bit_imm; Memory_data_type = UNSIGN; Store_op = NO_STORE_OP; RegFile_op = SAVE_DATA; break;
             //Store
             case(25): this->ALU_operation = ADD_op; Store_op = STOREBYTE; ALU_source1 = rs1; ALU_source2 = store_imm; Memory_op = NO_MEMORY_OP; RegFile_op = NO_RegFile_OP; break;
             case(26): this->ALU_operation = ADD_op; Store_op = STOREHALF; ALU_source1 = rs1; ALU_source2 = store_imm; Memory_op = NO_MEMORY_OP; RegFile_op = NO_RegFile_OP; break;

@@ -5,6 +5,7 @@
 #define RISC_V_CPU_SIMULATOR_RAM_H
 #include <cstdint>
 #include<vector>
+using namespace std;
 
 class RAM {
 public:

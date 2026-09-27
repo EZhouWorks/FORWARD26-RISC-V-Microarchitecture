@@ -11,4 +11,5 @@ add_executable(RISCV_CPU
         src/StallUnit.h
         src/BranchUnit.h
         src/JumpUnit.h
+        src/Probe.h
 )

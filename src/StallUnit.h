@@ -41,12 +41,13 @@ public:
         }
     }
 
-    void SetStall(ProgramCounter& program_counter, Decoder& decoder, IF_ID_data& IF_ID_Register) {
+    void SetStall(ProgramCounter& program_counter, Decoder& decoder, IF_ID_data& IF_ID_Register, int& stall_count) {
         if (decoder.insert_bubble == 0) {
             program_counter.enable = 0;
             decoder.insert_bubble = 1;
             IF_ID_Register.enable = 0;
             cout<<"DECODER INSRT BUBBLE "<<decoder.insert_bubble<<endl;
+            stall_count += 1;
         }
     }
 
@@ -60,7 +61,7 @@ public:
         }
     }
 
-    void SetStoreLoadStall(ProgramCounter& program_counter, Decoder& decoder, IF_ID_data& IF_ID_Register, ID_EX_data& ID_EX_Register) {
+    void SetStoreLoadStall(ProgramCounter& program_counter, Decoder& decoder, IF_ID_data& IF_ID_Register, ID_EX_data& ID_EX_Register, int& stall_count) {
         if (decoder.insert_bubble == 0) {
             program_counter.enable = 0;
             decoder.insert_bubble = 1;
@@ -68,6 +69,7 @@ public:
             IF_ID_Register.enable = 0;
             ID_EX_Register.enable = 0;
             cout<<"S-L Stall begin "<<decoder.insert_bubble<<endl;
+            stall_count += 1;
         }
     }
 
@@ -81,7 +83,6 @@ public:
             cout<<"S-L Stall END"<<endl;
         }
     }
-
 
 };
 #endif //RISCV_CPU_STALLUNIT_H

@@ -62,7 +62,7 @@ public:
         return cachelines[index];
     }
 
-    uint32_t readWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int& cache_hit_count, int is_command_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
+    uint32_t readWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int& data_cache_hit_count, int& fetch_cache_hit_count, int fetch_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
         uint32_t block = addr/64;
         uint32_t index = block%256;
         uint32_t tag = block/256;
@@ -70,8 +70,11 @@ public:
 
         CacheLine& target_cacheLine = cachelines[index];
         if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //hit
-            if (is_command_visit != 1) {
-                cache_hit_count += 1;
+            if (fetch_visit != 1) {
+                data_cache_hit_count += 1;
+            }
+            else {
+                fetch_cache_hit_count += 1;
             }
             //cout<<"hit L1"<<endl;
             return
@@ -97,7 +100,7 @@ public:
         }
     }
 
-    uint16_t readHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int& cache_hit_count, int is_command_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
+    uint16_t readHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int& data_cache_hit_count, int& fetch_cache_hit_count, int fetch_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
         uint32_t block = addr/64;
         uint32_t index = block%256;
         uint32_t tag = block/256;
@@ -105,8 +108,11 @@ public:
 
         CacheLine& target_cacheLine = cachelines[index];
         if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //hit
-            if (is_command_visit != 1) {
-                cache_hit_count += 1;
+            if (fetch_visit != 1) {
+                data_cache_hit_count += 1;
+            }
+            else {
+                fetch_cache_hit_count += 1;
             }
             //cout<<"hit L1"<<endl;
             return
@@ -129,7 +135,7 @@ public:
         }
     }
 
-    uint8_t readByte(uint32_t addr,L2Cache& l2cache,RAM& ram, int& cache_hit_count, int is_command_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
+    uint8_t readByte(uint32_t addr,L2Cache& l2cache,RAM& ram, int& data_cache_hit_count, int& fetch_cache_hit_count, int fetch_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
         uint32_t block = addr/64;
         uint32_t index = block%256;
         uint32_t tag = block/256;
@@ -137,8 +143,11 @@ public:
 
         CacheLine& target_cacheLine = cachelines[index];
         if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //hit
-            if (is_command_visit != 1) {
-                cache_hit_count += 1;
+            if (fetch_visit != 1) {
+                data_cache_hit_count += 1;
+            }
+            else{
+                fetch_cache_hit_count += 1;
             }
             //cout<<"hit L1"<<endl;
             return
@@ -257,25 +266,25 @@ public:
         }
     }
 
-    uint32_t Load(Memory_op Mem_op,Memory_data_type Memory_data_type, uint32_t addr,L2Cache& l2cache,RAM& ram,int& total_mem_read, int& cache_hit_count) {
+    uint32_t Load(Memory_op Mem_op,Memory_data_type Memory_data_type, uint32_t addr,L2Cache& l2cache,RAM& ram,int& total_mem_read, int& data_cache_hit_count, int& fetch_cache_hit_count) {
         switch (Mem_op) {
             case(Memory_op::READBYTE):
                 total_mem_read += 1;
                 switch (Memory_data_type) {
-                    case(Memory_data_type::UNSIGN):return readByte(addr,l2cache,ram,cache_hit_count,0);
-                    case(Memory_data_type::SIGN):return static_cast<int32_t>(static_cast<int8_t>(readByte(addr,l2cache,ram,cache_hit_count,0)));
+                    case(Memory_data_type::UNSIGN):return readByte(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,0);
+                    case(Memory_data_type::SIGN):return static_cast<int32_t>(static_cast<int8_t>(readByte(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,0)));
                 default: throw runtime_error("Unknown Memory Data Type");
                 }
             case(Memory_op::READHALF):
                 total_mem_read += 1;
                 switch (Memory_data_type) {
-                    case(Memory_data_type::UNSIGN):return readHalfWord(addr,l2cache,ram,cache_hit_count,0);break;
-                    case(Memory_data_type::SIGN):return (int32_t)readHalfWord(addr,l2cache,ram,cache_hit_count,0);break;
+                    case(Memory_data_type::UNSIGN):return readHalfWord(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,0);break;
+                    case(Memory_data_type::SIGN):return (int32_t)readHalfWord(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,0);break;
                 default: throw runtime_error("Unknown Memory Data Type");
                 }
             case(Memory_op::READWORD):
                 total_mem_read += 1;
-                return readWord(addr,l2cache,ram,cache_hit_count,0);
+                return readWord(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,0);
             case(Memory_op::NO_MEMORY_OP):return 0;
             default: throw runtime_error("Unknown Memory Operation");
         }

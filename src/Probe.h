@@ -11,13 +11,15 @@ public:
     int stall_count;
     int total_cycles;
     int total_mem_read;
-    int cache_hit_count;
+    int data_cache_hit_count;
     int is_fetch_mem_visit;
+    int fetch_cache_hit_count;
     Probe() {
         stall_count = 0;
         total_cycles = 0;
         total_mem_read = 0;
-        cache_hit_count = 0;
+        data_cache_hit_count = 0;
+        fetch_cache_hit_count = 0;
     };
 
 };

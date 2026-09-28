@@ -7,9 +7,9 @@
 #include "CPUcore.h"
 #include "RAM.h"
 #include "L2Cache.h"
-
+constexpr int L1_SIZE = 16*1024;
 constexpr int BLOCK_SIZE = 64;
-constexpr int CACHE_LINES = 256;
+constexpr int CACHE_LINES = L1_SIZE/BLOCK_SIZE;
 
 enum Memory_op {
     READBYTE,
@@ -64,9 +64,14 @@ public:
 
     uint32_t readWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int& data_cache_hit_count, int& fetch_cache_hit_count, int fetch_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
         uint32_t block = addr/64;
-        uint32_t index = block%256;
-        uint32_t tag = block/256;
+        uint32_t index = block%CACHE_LINES;
+        uint32_t tag = block/CACHE_LINES;
         uint32_t offset = addr%64;
+
+        //check if data addr is in two separate lines
+        if (offset>60) {
+            throw runtime_error("Access data in sepate cachelines");
+        }
 
         CacheLine& target_cacheLine = cachelines[index];
         if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //hit
@@ -76,7 +81,6 @@ public:
             else {
                 fetch_cache_hit_count += 1;
             }
-            //cout<<"hit L1"<<endl;
             return
                   (uint32_t)target_cacheLine.bytes[offset]
                 | ((uint32_t)target_cacheLine.bytes[offset+1] << 8)
@@ -102,9 +106,13 @@ public:
 
     uint16_t readHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int& data_cache_hit_count, int& fetch_cache_hit_count, int fetch_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
         uint32_t block = addr/64;
-        uint32_t index = block%256;
-        uint32_t tag = block/256;
+        uint32_t index = block%CACHE_LINES;
+        uint32_t tag = block/CACHE_LINES;
         uint32_t offset = addr%64;
+
+        if (offset > 62) {
+            throw runtime_error("Access data in separate cachelines");
+        }
 
         CacheLine& target_cacheLine = cachelines[index];
         if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //hit
@@ -114,7 +122,6 @@ public:
             else {
                 fetch_cache_hit_count += 1;
             }
-            //cout<<"hit L1"<<endl;
             return
                   (uint32_t)target_cacheLine.bytes[offset]
                 | ((uint32_t)target_cacheLine.bytes[offset+1] << 8);
@@ -137,8 +144,8 @@ public:
 
     uint8_t readByte(uint32_t addr,L2Cache& l2cache,RAM& ram, int& data_cache_hit_count, int& fetch_cache_hit_count, int fetch_visit) { //loads data from ram if missed, can also be used to access data in L1Cache
         uint32_t block = addr/64;
-        uint32_t index = block%256;
-        uint32_t tag = block/256;
+        uint32_t index = block%CACHE_LINES;
+        uint32_t tag = block/CACHE_LINES;
         uint32_t offset = addr%64;
 
         CacheLine& target_cacheLine = cachelines[index];
@@ -184,8 +191,8 @@ public:
 
     void Store(Store_op Store_op, uint32_t addr, uint32_t data,L2Cache& l2cache,RAM& ram) {
         uint32_t block = addr/64;
-        uint32_t index = block%256;
-        uint32_t tag = block/256;
+        uint32_t index = block%CACHE_LINES;
+        uint32_t tag = block/CACHE_LINES;
         uint32_t offset = addr%64;
         uint32_t L2index = block%4096;
         CacheLine& target_cacheLine = cachelines[index];
@@ -210,6 +217,9 @@ public:
                 break;
             }
             case(Store_op::STOREHALF): {
+                if (offset > 62) {
+                    throw runtime_error("Store block in separate cachelines");
+                }
                 uint8_t lowByte  = uint16_t(data) & 0xFF;
                 uint8_t highByte = (uint16_t(data) >> 8) & 0xFF;
                 if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //check if L1 hit
@@ -233,6 +243,9 @@ public:
                 break;
             }
             case(Store_op::STOREWORD): {
+                if (offset > 60) {
+                    throw runtime_error("Store block in separate cachelines");
+                }
                 uint8_t byte0 =  data & 0xFF;
                 uint8_t byte1 = (data >> 8)  & 0xFF;
                 uint8_t byte2 = (data >> 16) & 0xFF;

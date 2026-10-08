@@ -32,7 +32,8 @@ public:
     Decoder decoder = Decoder();
     RegisterFile registerFile = RegisterFile();
     int core_id;
-    L1Cache l1_cache = L1Cache();
+    int set_associative_on = 1;
+    L1Cache l1_cache = L1Cache(set_associative_on);
     PipelineRegisters pipeline_registers_write = PipelineRegisters(); //this pipeline register set is write only
     PipelineRegisters pipeline_registers_read = PipelineRegisters();  //this pipeline register set is read only
     ForwardingUnit forwarding_unit = ForwardingUnit();
@@ -55,14 +56,14 @@ public:
         this->enable_signal.WriteBackEnable = 1;
     }
 
-    uint8_t CPULoadByte(uint32_t addr,L2Cache& l2cache,RAM& ram,int& data_cache_hit_count,int& fetch_cache_hit_count) {
-        return l1_cache.readByte(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,1);
+    uint8_t CPULoadByte(uint32_t addr,L2Cache& l2cache,RAM& ram, int set_associative_on, int& data_cache_hit_count,int& fetch_cache_hit_count) {
+        return l1_cache.readByte(addr,l2cache,ram, set_associative_on, data_cache_hit_count,fetch_cache_hit_count,1);
     }
-    uint16_t CPULoadHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram,int& data_cache_hit_count, int& fetch_cache_hit_count) {
-        return l1_cache.readHalfWord(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,1);
+    uint16_t CPULoadHalfWord(uint32_t addr,L2Cache& l2cache,RAM& ram, int set_associative_on, int& data_cache_hit_count, int& fetch_cache_hit_count) {
+        return l1_cache.readHalfWord(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,1);
     }
-    uint32_t CPULoadWord(uint32_t addr,L2Cache& l2cache,RAM& ram,int& data_cache_hit_count, int& fetch_cache_hit_count) {
-        return l1_cache.readWord(addr,l2cache,ram,data_cache_hit_count,fetch_cache_hit_count,1);
+    uint32_t CPULoadWord(uint32_t addr,L2Cache& l2cache,RAM& ram,int set_associative_on, int& data_cache_hit_count, int& fetch_cache_hit_count) {
+        return l1_cache.readWord(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,1);
     }
 
     void Fetch(L2Cache& l2cache,RAM& ram) {
@@ -82,7 +83,7 @@ public:
                 cout<<"hit cond"<<endl;
 
                 //Normal
-                pipeline_registers_write.IF_ID_register.machine_code = CPULoadWord(program_counter.PC_value,l2cache,ram,probes.data_cache_hit_count,probes.fetch_cache_hit_count);
+                pipeline_registers_write.IF_ID_register.machine_code = CPULoadWord(program_counter.PC_value,l2cache,ram,set_associative_on, probes.data_cache_hit_count,probes.fetch_cache_hit_count);
                 pipeline_registers_write.IF_ID_register.command_PC_value = program_counter.PC_value;
                 pipeline_registers_write.IF_ID_register.valid = 1;
                 cout<<"MACHINE CODE AT FETCH "<<bitset<32>(pipeline_registers_write.IF_ID_register.machine_code)<<endl;
@@ -191,6 +192,7 @@ public:
             //Store-Load Stall unfreeze
             if (pipeline_registers_read.ID_EX_register.Memory_op != NO_MEMORY_OP and pipeline_registers_read.EX_MEM_register.Store_op == NO_STORE_OP and decoder.StoreLoad_bubble == 1) {
                 pipeline_registers_write.EX_MEM_register.prev_store_op = 0;
+                pipeline_registers_write.EX_MEM_register.valid = 1;
                 stall_unit.ExitStoreLoadStall(program_counter,decoder,pipeline_registers_write.IF_ID_register,pipeline_registers_write.ID_EX_register);
             }
 
@@ -206,13 +208,29 @@ public:
 
             //WB Bypass
             if (pipeline_registers_read.MEM_WB_register.valid == 1 and forwarding_unit.ForwardingCompare(pipeline_registers_read.MEM_WB_register.rd_addr,decoder.rs1) == 1) {
-                pipeline_registers_write.ID_EX_register.rs1_val = pipeline_registers_read.MEM_WB_register.ALU_result;
+                if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_ALU_RESULT){
+                    pipeline_registers_write.ID_EX_register.rs1_val = pipeline_registers_read.MEM_WB_register.ALU_result;
+                }
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_DATA) {
+                    pipeline_registers_write.ID_EX_register.rs1_val = pipeline_registers_read.MEM_WB_register.data;
+                }
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_PC_VAL) {
+                    pipeline_registers_write.ID_EX_register.rs1_val = pipeline_registers_read.MEM_WB_register.command_PC_value;
+                }
             }
             else {
                 pipeline_registers_write.ID_EX_register.rs1_val = registerFile.read(decoder.rs1);
             }
             if (pipeline_registers_read.MEM_WB_register.valid == 1 and forwarding_unit.ForwardingCompare(pipeline_registers_read.MEM_WB_register.rd_addr,decoder.rs2) == 1) {
-                pipeline_registers_write.ID_EX_register.rs2_val = pipeline_registers_read.MEM_WB_register.ALU_result;
+                if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_ALU_RESULT){
+                    pipeline_registers_write.ID_EX_register.rs2_val = pipeline_registers_read.MEM_WB_register.ALU_result;
+                }
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_DATA) {
+                    pipeline_registers_write.ID_EX_register.rs2_val = pipeline_registers_read.MEM_WB_register.data;
+                }
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_PC_VAL) {
+                    pipeline_registers_write.ID_EX_register.rs2_val = pipeline_registers_read.MEM_WB_register.command_PC_value;
+                }
             }
             else {
                 pipeline_registers_write.ID_EX_register.rs2_val = registerFile.read(decoder.rs2);
@@ -269,21 +287,26 @@ public:
             Store_op store_op = pipeline_registers_read.ID_EX_register.Store_op;
 
             //WB bypass
-            if (pipeline_registers_write.MEM_WB_register.valid == 1 and forwarding_unit.ForwardingCompare(rs1_addr,pipeline_registers_read.MEM_WB_register.rd_addr) == 1) {
-                //check if data comes from ALU result or loaded from MEM
-                if (pipeline_registers_read.MEM_WB_register.Memory_op == Memory_op::NO_MEMORY_OP) {
+            if (pipeline_registers_read.MEM_WB_register.valid == 1 and forwarding_unit.ForwardingCompare(pipeline_registers_read.MEM_WB_register.rd_addr,rs1_addr) == 1) {
+                if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_ALU_RESULT){
                     rs1_input_val = pipeline_registers_read.MEM_WB_register.ALU_result;
                 }
-                else {
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_DATA) {
                     rs1_input_val = pipeline_registers_read.MEM_WB_register.data;
                 }
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_PC_VAL) {
+                    rs1_input_val = pipeline_registers_read.MEM_WB_register.command_PC_value;
+                }
             }
-            if (pipeline_registers_write.MEM_WB_register.valid == 1 and forwarding_unit.ForwardingCompare(rs2_addr,pipeline_registers_read.MEM_WB_register.rd_addr) == 1) {
-                if (pipeline_registers_read.MEM_WB_register.Memory_op == Memory_op::NO_MEMORY_OP) {
+            if (pipeline_registers_read.MEM_WB_register.valid == 1 and forwarding_unit.ForwardingCompare(pipeline_registers_read.MEM_WB_register.rd_addr,rs2_addr) == 1) {
+                if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_ALU_RESULT){
                     rs2_input_val = pipeline_registers_read.MEM_WB_register.ALU_result;
                 }
-                else {
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_DATA) {
                     rs2_input_val = pipeline_registers_read.MEM_WB_register.data;
+                }
+                else if (pipeline_registers_read.MEM_WB_register.RegFile_op == SAVE_PC_VAL) {
+                    rs2_input_val = pipeline_registers_read.MEM_WB_register.command_PC_value;
                 }
             }
 
@@ -348,12 +371,15 @@ public:
                 // cout<<"PC value at EXE = "<<program_counter.PC_value<<endl;
             }
 
-
+            //Store-Load stall
             if (memory_op != NO_MEMORY_OP and pipeline_registers_read.EX_MEM_register.Store_op != NO_STORE_OP) {
                 if (stall_unit.CheckLoadStoreStall(pipeline_registers_read.EX_MEM_register.ALU_result, ALU_result)) {
                     pipeline_registers_write.IF_ID_register.valid = 0;
                     pipeline_registers_write.ID_EX_register.valid = 0;
+                    pipeline_registers_write.EX_MEM_register.valid = 0;
+                    pipeline_registers_write.EX_MEM_register.Store_op = NO_STORE_OP;
                     stall_unit.SetStoreLoadStall(program_counter, decoder,pipeline_registers_write.IF_ID_register,pipeline_registers_write.ID_EX_register,probes.stall_count);
+                    return;
                 }
             }
 
@@ -384,7 +410,7 @@ public:
             Memory_op memory_op = pipeline_registers_read.EX_MEM_register.Memory_op;
             Memory_data_type memory_data_type = pipeline_registers_read.EX_MEM_register.Memory_data_type;
             uint32_t ALU_result = pipeline_registers_read.EX_MEM_register.ALU_result;
-            pipeline_registers_write.MEM_WB_register.data = l1_cache.Load(memory_op, memory_data_type,ALU_result,l2cache, ram, probes.total_mem_read,probes.data_cache_hit_count,probes.fetch_cache_hit_count); //Remember to connect this to I/O
+            pipeline_registers_write.MEM_WB_register.data = l1_cache.Load(memory_op, memory_data_type,ALU_result,l2cache, ram, set_associative_on, probes.total_mem_read,probes.data_cache_hit_count,probes.fetch_cache_hit_count); //Remember to connect this to I/O
 
             //pass on data from EX/MEM Register
             pipeline_registers_write.MEM_WB_register.ALU_result = pipeline_registers_read.EX_MEM_register.ALU_result;
@@ -418,7 +444,7 @@ public:
             cout<<"RS2 val "<<rs2_val<<endl;
             cout<<"ALU result "<<ALU_result<<endl;
             registerFile.operate(RegFile_op,data,ALU_result,rd_addr,command_PC_value);
-            l1_cache.Store(Store_op,Store_addr,rs2_val, l2cache, ram);
+            l1_cache.Store(Store_op,Store_addr,rs2_val, l2cache, ram, set_associative_on);
         }
     }
 

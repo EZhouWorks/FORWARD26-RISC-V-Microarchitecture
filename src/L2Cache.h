@@ -9,9 +9,12 @@ constexpr int BLOCK_SIZE_L2 = 64;
 constexpr int CACHE_LINES_L2 = 4096;
 
 struct CacheLine {
-    int dirty; //indicates if this line is the same as corresponding data block in RAM
-    int valid;
-    int tag;
+    int dirty = 0; //indicates if this line is the same as corresponding data block in RAM
+    int valid = 0;
+    int tag = 0;
+    int set = 0;
+    int LRU = 0; // 0: recently used;  1: swap next time
+    int set_associative_line = 0;
     uint8_t bytes[64]; //each cacheline stores 16 commands， 64byte storage,
 };
 

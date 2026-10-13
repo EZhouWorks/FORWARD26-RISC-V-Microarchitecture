@@ -41,13 +41,14 @@ public:
     ProgramCounter program_counter;
     BranchUnit branch_unit = BranchUnit();
     JumpUnit jump_unit = JumpUnit();
-    BranchPredictor branch_predictor = BranchPredictor(0);
+    BranchPredictor branch_predictor;
     Probe& probes;
 
     CPUcore(int core_id,int end_point, Probe& probes)
         :core_id(core_id),
         program_counter(0,end_point),
-        probes(probes)
+        probes(probes),
+        branch_predictor(0,probes.total_branch_predictions)
     {
         this->enable_signal.FetchEnable = 1;
         this->enable_signal.DecodeEnable = 1;
@@ -361,6 +362,9 @@ public:
                         program_counter.SetValue(branch_command_addr+4);
                     }
                 }
+                else {
+                    probes.correct_branch_predictions += 1;
+                }
             }
 
             //JumpUnit execution
@@ -444,7 +448,10 @@ public:
             cout<<"RS2 val "<<rs2_val<<endl;
             cout<<"ALU result "<<ALU_result<<endl;
             registerFile.operate(RegFile_op,data,ALU_result,rd_addr,command_PC_value);
-            l1_cache.Store(Store_op,Store_addr,rs2_val, l2cache, ram, set_associative_on);
+            l1_cache.Store(Store_op,Store_addr,rs2_val, l2cache, ram, set_associative_on, probes.data_cache_hit_count);
+
+            //code below are for statistical use
+            probes.data_cache_hit_count += 1;
         }
     }
 

@@ -13,11 +13,13 @@ public:
     uint8_t GlobalHistoryRegister = 0b00000000;
     array<uint8_t, 256> PatternHistoryTable;
     int enable;
+    int total_branch_predictions;
 
-    BranchPredictor(int enable) {
+    BranchPredictor(int enable, int& total_branch_predictions) {
         GlobalHistoryRegister = 0b00000000;
         for (int i = 0; i < 256; i++) {
             PatternHistoryTable[i] = 0b00000010; //initializes all default to strongly taken
+            this->total_branch_predictions = total_branch_predictions;
         }
         this->enable = enable;
     }
@@ -39,6 +41,7 @@ public:
     }
 
     int predict(uint32_t command_addr) {
+        total_branch_predictions += 1;
         int PHT_entry = static_cast<uint8_t>((command_addr >> 2) & 0xFF) ^ GlobalHistoryRegister;
         uint8_t PHT_value = PatternHistoryTable[PHT_entry];
         switch (PHT_value) {

@@ -414,7 +414,7 @@ public:
             Memory_op memory_op = pipeline_registers_read.EX_MEM_register.Memory_op;
             Memory_data_type memory_data_type = pipeline_registers_read.EX_MEM_register.Memory_data_type;
             uint32_t ALU_result = pipeline_registers_read.EX_MEM_register.ALU_result;
-            pipeline_registers_write.MEM_WB_register.data = l1_cache.Load(memory_op, memory_data_type,ALU_result,l2cache, ram, set_associative_on, probes.total_mem_read,probes.data_cache_hit_count,probes.fetch_cache_hit_count); //Remember to connect this to I/O
+            pipeline_registers_write.MEM_WB_register.data = l1_cache.Load(memory_op, memory_data_type,ALU_result,l2cache, ram, set_associative_on, probes.total_mem_visit,probes.data_cache_hit_count,probes.fetch_cache_hit_count, probes.total_read_visit); //Remember to connect this to I/O
 
             //pass on data from EX/MEM Register
             pipeline_registers_write.MEM_WB_register.ALU_result = pipeline_registers_read.EX_MEM_register.ALU_result;
@@ -448,10 +448,10 @@ public:
             cout<<"RS2 val "<<rs2_val<<endl;
             cout<<"ALU result "<<ALU_result<<endl;
             registerFile.operate(RegFile_op,data,ALU_result,rd_addr,command_PC_value);
-            l1_cache.Store(Store_op,Store_addr,rs2_val, l2cache, ram, set_associative_on, probes.data_cache_hit_count);
+            l1_cache.Store(Store_op,Store_addr,rs2_val, l2cache, ram, set_associative_on, probes.total_mem_visit, probes.total_store_visit,probes.data_store_hit_count);
 
             //code below are for statistical use
-            probes.data_cache_hit_count += 1;
+            probes.retired_instructions += 1;
         }
     }
 
@@ -478,7 +478,7 @@ public:
         }
 
         //codes below are for debug purposes only
-        //cout<<"RAM at 104 "<<l1_cache.readWord(104,l2cache,ram)<<endl;
+
     }
 };
 

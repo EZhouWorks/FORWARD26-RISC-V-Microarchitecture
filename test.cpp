@@ -109,4 +109,14 @@ int main() {
     cout << unsigned(ram.readCell(4096))  << endl; // 0
     cout << unsigned(ram.readCell(20480)) << endl; // 99
     cout << unsigned(ram.readCell(36864)) << endl; // 0
+    probes.calculate_BPA(1);
+    probes.calculate_IPC();
+    probes.calculate_CPI();
+    probes.calculate_load_hit_count();
+    probes.calculate_store_hit_count();
+    probes.calculate_overall_hit();
+    cout<<probes.total_cycles<<endl;
+    cout<<probes.retired_instructions<<endl;
+
+
 }

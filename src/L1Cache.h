@@ -528,7 +528,11 @@ public:
     //     }
     // }
 
-    void Store(Store_op Store_op, uint32_t addr, uint32_t data,L2Cache& l2cache,RAM& ram, int set_associative_on, int& data_cache_hit_count) {
+    void Store(Store_op Store_op, uint32_t addr, uint32_t data,L2Cache& l2cache,RAM& ram, int set_associative_on, int& total_mem_visit, int& total_store_visit, int& data_store_hit_count) {
+        if (Store_op != NO_STORE_OP) {
+            total_mem_visit += 1;
+            total_store_visit += 1;
+        }
         if (set_associative_on == 0) {
             //direct mapping
             uint32_t block = addr/64;
@@ -540,7 +544,7 @@ public:
             switch (Store_op) {
                 case(Store_op::STOREBYTE):{
                     if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //check if L1 hit
-                        data_cache_hit_count += 1;
+                         data_store_hit_count += 1;
                         target_cacheLine.bytes[offset] = data; //update new data
                     }
                     else { //miss, save dirty cacheline, load new cacheline
@@ -565,7 +569,7 @@ public:
                     uint8_t lowByte  = uint16_t(data) & 0xFF;
                     uint8_t highByte = (uint16_t(data) >> 8) & 0xFF;
                     if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //check if L1 hit
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         target_cacheLine.bytes[offset] = lowByte;
                         target_cacheLine.bytes[offset+1] = highByte;
                     }
@@ -594,7 +598,7 @@ public:
                     uint8_t byte2 = (data >> 16) & 0xFF;
                     uint8_t byte3 = (data >> 24) & 0xFF;
                     if (target_cacheLine.valid == 1 and target_cacheLine.tag == tag) { //check if L1 hit
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         target_cacheLine.bytes[offset] = byte0;
                         target_cacheLine.bytes[offset+1] = byte1;
                         target_cacheLine.bytes[offset+2] = byte2;
@@ -636,7 +640,7 @@ public:
                     //check set1 hit
                     if (set1.valid == 1 and set1.tag == tag) {
                         //hit set 1
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         set1.bytes[offset] = data;
                         set1.dirty = 1;
                         set1.LRU = 0;
@@ -646,7 +650,7 @@ public:
                     //check set2 hit
                     else if (set2.valid == 1 and set2.tag == tag) {
                         //hit set 2
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         set2.bytes[offset] = data;
                         set2.dirty = 1;
                         set2.LRU = 0;
@@ -719,7 +723,7 @@ public:
                     uint8_t highByte = (uint16_t(data) >> 8) & 0xFF;
                     //check set 1 hit
                     if (set1.valid == 1 and set1.tag == tag) {
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         set1.bytes[offset] = lowByte;
                         set1.bytes[offset+1] = highByte;
                         set1.dirty = 1;
@@ -728,7 +732,7 @@ public:
                     }
                     //check set 2 hit
                     else if (set2.valid == 1 and set2.tag == tag) {
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         set2.bytes[offset] = lowByte;
                         set2.bytes[offset+1] = highByte;
                         set2.dirty = 1;
@@ -806,7 +810,7 @@ public:
 
                     //check set 1 hit
                     if (set1.valid == 1 and set1.tag == tag) {
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         set1.bytes[offset] = byte0;
                         set1.bytes[offset+1] = byte1;
                         set1.bytes[offset+2] = byte2;
@@ -818,7 +822,7 @@ public:
                     }
                     //check set 2 hit
                     else if (set2.valid == 1 and set2.tag == tag) {
-                        data_cache_hit_count += 1;
+                        data_store_hit_count += 1;
                         set2.bytes[offset] = byte0;
                         set2.bytes[offset+1] = byte1;
                         set2.bytes[offset+2] = byte2;
@@ -901,24 +905,27 @@ public:
         }
     }
 
-    uint32_t Load(Memory_op Mem_op,Memory_data_type Memory_data_type, uint32_t addr,L2Cache& l2cache,RAM& ram, int set_associative_on, int& total_mem_read, int& data_cache_hit_count, int& fetch_cache_hit_count) {
+    uint32_t Load(Memory_op Mem_op,Memory_data_type Memory_data_type, uint32_t addr,L2Cache& l2cache,RAM& ram, int set_associative_on, int& total_mem_visit, int& data_cache_hit_count, int& fetch_cache_hit_count, int& total_read_visit) {
         switch (Mem_op) {
             case(Memory_op::READBYTE):
-                total_mem_read += 1;
+                total_mem_visit += 1;
+                total_read_visit += 1;
                 switch (Memory_data_type) {
                     case(Memory_data_type::UNSIGN):return readByte(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,0);
                     case(Memory_data_type::SIGN):return static_cast<int32_t>(static_cast<int8_t>(readByte(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,0)));
                 default: throw runtime_error("Unknown Memory Data Type");
                 }
             case(Memory_op::READHALF):
-                total_mem_read += 1;
+                total_mem_visit += 1;
+                total_read_visit += 1;
                 switch (Memory_data_type) {
                     case(Memory_data_type::UNSIGN):return readHalfWord(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,0);break;
                     case(Memory_data_type::SIGN):return static_cast<int32_t>(static_cast<int16_t>(readHalfWord(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,0)));break;
                 default: throw runtime_error("Unknown Memory Data Type");
                 }
             case(Memory_op::READWORD):
-                total_mem_read += 1;
+                total_mem_visit += 1;
+                total_read_visit += 1;
                 return readWord(addr,l2cache,ram,set_associative_on, data_cache_hit_count,fetch_cache_hit_count,0);
             case(Memory_op::NO_MEMORY_OP):return 0;
             default: throw runtime_error("Unknown Memory Operation");

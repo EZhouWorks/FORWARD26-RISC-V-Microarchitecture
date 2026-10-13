@@ -22,10 +22,10 @@ This is a C++ based multicore RISC-V CPU simulation
 2.set associative  
 3.cache statistics
 
-6st stage implementation: Branch Prediction  **->current stage**  
+6st stage implementation: Branch Prediction 
 1.2-bit saturating counter  
 
-7st stage: benchmark:  
+7st stage: benchmark:  **-> current stage**  
 1.CPI  
 
 8st stage: FPGA implementation:
